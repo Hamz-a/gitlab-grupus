@@ -14,24 +14,32 @@ def clone_repo(url, path):
 
 
 def get_subgroups_for_group(domain, cookies, group_id, recursive, insecure):
-    r = requests.get('https://{}{}/groups/{}/subgroups'.format(domain, GITLAB_API, group_id), cookies=cookies, verify=not insecure)
-    if r.status_code != 200:
-        print('Wrong group id {}...'.format(group_id))
-        return []
-    for subgroup in r.json():
-        get_repos_for_group(domain, cookies, subgroup['id'], recursive)
+    try:
+        r = requests.get('https://{}{}/groups/{}/subgroups'.format(domain, GITLAB_API, group_id), cookies=cookies, verify=not insecure)
+        if r.status_code != 200:
+            print('Wrong group id {}...'.format(group_id))
+            return []
+        for subgroup in r.json():
+            get_repos_for_group(domain, cookies, subgroup['id'], recursive, insecure)
+    except requests.exceptions.SSLError:
+        print('[x] SSL error, you\'re either being MitM\'d or the target domain uses a self-signed certificate.')
+        print('    If it is the latter, consider using -i/--insecure...')
 
 
 def get_repos_for_group(domain, cookies, group_id, recursive, insecure):
     print('Checking repos for {}...'.format(group_id))
-    r = requests.get('https://{}{}/groups/{}'.format(domain, GITLAB_API, group_id), cookies=cookies, verify=not insecure)
-    if r.status_code != 200:
-        print('Wrong group id or invalid session...')
-        sys.exit(-1)
-    for project in r.json()['projects']:
-        clone_repo(project['ssh_url_to_repo'], project['path_with_namespace'])
-    if recursive:
-        get_subgroups_for_group(cookies, group_id, recursive, insecure)
+    try:
+        r = requests.get('https://{}{}/groups/{}'.format(domain, GITLAB_API, group_id), cookies=cookies, verify=not insecure)
+        if r.status_code != 200:
+            print('Wrong group id or invalid session...')
+            sys.exit(-1)
+        for project in r.json()['projects']:
+            clone_repo(project['ssh_url_to_repo'], project['path_with_namespace'])
+        if recursive:
+            get_subgroups_for_group(domain, cookies, group_id, recursive, insecure)
+    except requests.exceptions.SSLError:
+        print('[x] SSL error, you\'re either being MitM\'d or the target domain uses a self-signed certificate.')
+        print('    If it is the latter, consider using -i/--insecure...')
 
 
 def main():
