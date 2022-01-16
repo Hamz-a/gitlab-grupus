@@ -13,8 +13,8 @@ def clone_repo(url, path):
     subprocess.run(['git', 'clone', url, path])
 
 
-def get_subgroups_for_group(domain, cookies, group_id, recursive):
-    r = requests.get('https://{}{}/groups/{}/subgroups'.format(domain, GITLAB_API, group_id), cookies=cookies)
+def get_subgroups_for_group(domain, cookies, group_id, recursive, insecure):
+    r = requests.get('https://{}{}/groups/{}/subgroups'.format(domain, GITLAB_API, group_id), cookies=cookies, verify=not insecure)
     if r.status_code != 200:
         print('Wrong group id {}...'.format(group_id))
         return []
@@ -22,27 +22,28 @@ def get_subgroups_for_group(domain, cookies, group_id, recursive):
         get_repos_for_group(domain, cookies, subgroup['id'], recursive)
 
 
-def get_repos_for_group(domain, cookies, group_id, recursive):
+def get_repos_for_group(domain, cookies, group_id, recursive, insecure):
     print('Checking repos for {}...'.format(group_id))
-    r = requests.get('https://{}{}/groups/{}'.format(domain, GITLAB_API, group_id), cookies=cookies)
+    r = requests.get('https://{}{}/groups/{}'.format(domain, GITLAB_API, group_id), cookies=cookies, verify=not insecure)
     if r.status_code != 200:
         print('Wrong group id or invalid session...')
         sys.exit(-1)
     for project in r.json()['projects']:
         clone_repo(project['ssh_url_to_repo'], project['path_with_namespace'])
     if recursive:
-        get_subgroups_for_group(cookies, group_id, recursive)
+        get_subgroups_for_group(cookies, group_id, recursive, insecure)
 
 
 def main():
     arg_parser = argparse.ArgumentParser(prog='ggrupus', description='Clone gitlab repositories by group ID')
     arg_parser.add_argument('-r', '--recursive', help='Recursively clone repositories', default=False, action='store_true')
     arg_parser.add_argument('-u', '--url', help='Set domain (defaults to gitlab.com)', default='gitlab.com')
+    arg_parser.add_argument('-i', '--insecure', help='Disable TLS certificate check', default=False, action='store_true')
     arg_parser.add_argument('_gitlab_session', help='Gitlab session cookie')
     arg_parser.add_argument('group_id', help='The gitlab group ID we want to scrape')
     args = arg_parser.parse_args()
     cookies = {'_gitlab_session': args._gitlab_session}
-    get_repos_for_group(args.url, cookies, args.group_id, args.recursive)
+    get_repos_for_group(args.url, cookies, args.group_id, args.recursive, args.insecure)
 
 
 if __name__ == '__main__':
