@@ -5,7 +5,7 @@ Are you tired of cloning manually each repository one by one? This tool allows y
 ## Installation
 ```
 git clone https://github.com/Hamz-a/gitlab-grupus
-python3 setup.py install
+python3 setup.py install --user
 ```
 
 ## Usage
